@@ -298,19 +298,28 @@ class GameState:
                         self.farmer.direction = 1
                         self.farmer.current_index = 1
 
-                for sw in self.sound_waves:
-                    fx, fy = self.farmer.patrol_edges[self.farmer.current_index]
-                    dist = math.sqrt((fx - sw.x) ** 2 + (fy - sw.y) ** 2)
-                    if dist <= sw.radius + 2:
-                        self.farmer.target_x = sw.x
-                        self.farmer.target_y = sw.y
-                        if self.tick_count % 3 == 0:
-                            self.hammers.append(HammerState(sw.x, sw.y, self.tick_count, self.tick_count + 2))
-
-                if not self.sound_waves and self.tick_count % 5 == 0:
-                    x, y = self._get_random_empty_cell()
-                    if x is not None:
-                        self.hammers.append(HammerState(x, y, self.tick_count, self.tick_count + 3))
+                fx, fy = self.farmer.patrol_edges[self.farmer.current_index]
+                
+                if self.sound_waves:
+                    for sw in self.sound_waves:
+                        dist = math.sqrt((fx - sw.x) ** 2 + (fy - sw.y) ** 2)
+                        if dist <= sw.radius + 3:
+                            self.farmer.target_x = sw.x
+                            self.farmer.target_y = sw.y
+                            if self.tick_count % 2 == 0:
+                                self.hammers.append(HammerState(sw.x, sw.y, self.tick_count, self.tick_count + 2))
+                else:
+                    mole_dist = math.sqrt((fx - self.mole_x) ** 2 + (fy - self.mole_y) ** 2)
+                    if mole_dist <= 8 and self.tick_count % 4 == 0:
+                        target_x = self.mole_x + random.randint(-1, 1)
+                        target_y = self.mole_y + random.randint(-1, 1)
+                        target_x = max(0, min(target_x, self.grid_size - 1))
+                        target_y = max(0, min(target_y, self.grid_size - 1))
+                        self.hammers.append(HammerState(target_x, target_y, self.tick_count, self.tick_count + 3))
+                    elif self.tick_count % 5 == 0:
+                        x, y = self._get_random_empty_cell()
+                        if x is not None:
+                            self.hammers.append(HammerState(x, y, self.tick_count, self.tick_count + 3))
 
         if self.level >= 3 and self.dog:
             if self.tick_count % 2 == 0:
@@ -322,9 +331,9 @@ class GameState:
                     self.dog.direction = 1
                     self.dog.current_index = 1
 
-                dog_x, dog_y = self.dog.patrol_route[self.dog.current_index]
-                if dog_x == self.mole_x and dog_y == self.mole_y and not self.skills.is_burrowed:
-                    self.status = GameStatus.LOST
+            dog_x, dog_y = self.dog.patrol_route[self.dog.current_index]
+            if dog_x == self.mole_x and dog_y == self.mole_y and not self.skills.is_burrowed:
+                self.status = GameStatus.LOST
 
         for hammer in self.hammers:
             if not hammer.has_struck and self.tick_count >= hammer.strike_time:
