@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地鼠潜行 - Mole Sneak</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2d5016 0%, #4a7c23 50%, #2d5016 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .game-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .game-title {
+            font-size: 2.5em;
+            color: #2d5016;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .level-display {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: linear-gradient(90deg, #f8f9fa, #e9ecef);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #2d5016;
+        }
+
+        .stat-value.carrots {
+            color: #ff6b35;
+        }
+
+        .game-board {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            gap: 3px;
+            background: #8b4513;
+            padding: 5px;
+            border-radius: 10px;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .cell {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(145deg, #90ee90, #7ccd7c);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:hover {
+            transform: scale(1.02);
+        }
+
+        .cell.rock {
+            background: linear-gradient(145deg, #696969, #808080);
+            cursor: not-allowed;
+        }
+
+        .cell.trap {
+            background: linear-gradient(145deg, #8b4513, #a0522d);
+        }
+
+        .cell.warning {
+            background: linear-gradient(145deg, #ff6b6b, #ee5a5a);
+            animation: pulse-warning 0.5s infinite;
+        }
+
+        .cell.struck {
+            background: linear-gradient(145deg, #333, #555);
+        }
+
+        .cell.farmer {
+            background: linear-gradient(145deg, #ffd93d, #f4d03f);
+        }
+
+        .cell.dog {
+            background: linear-gradient(145deg, #e67e22, #d35400);
+        }
+
+        .cell.burrowed {
+            background: linear-gradient(145deg, #654321, #8b4513);
+        }
+
+        @keyframes pulse-warning {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .cell-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .direction-controls {
+            display: grid;
+            grid-template-areas:
+                ". up ."
+                "left center right"
+                ". down .";
+            gap: 8px;
+        }
+
+        .dir-btn {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #4a7c23, #2d5016);
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dir-btn:hover {
+            background: linear-gradient(145deg, #5a9c33, #3d6026);
+            transform: scale(1.05);
+        }
+
+        .dir-btn:active {
+            transform: scale(0.95);
+        }
+
+        .dir-btn.up { grid-area: up; }
+        .dir-btn.down { grid-area: down; }
+        .dir-btn.left { grid-area: left; }
+        .dir-btn.right { grid-area: right; }
+        .dir-btn.center { grid-area: center; background: #666; cursor: default; }
+
+        .skill-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .skill-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .skill-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .skill-btn.dash {
+            background: linear-gradient(145deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .skill-btn.dash:hover:not(:disabled) {
+            background: linear-gradient(145deg, #5dade2, #3498db);
+        }
+
+        .skill-btn.burrow {
+            background: linear-gradient(145deg, #9b59b6, #8e44ad);
+            color: white;
+        }
+
+        .skill-btn.burrow:hover:not(:disabled) {
+            background: linear-gradient(145deg, #bb8fce, #9b59b6);
+        }
+
+        .skill-cost {
+            font-size: 0.8em;
+            opacity: 0.9;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn.restart {
+            background: linear-gradient(145deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .action-btn.restart:hover {
+            background: linear-gradient(145deg, #ec7063, #e74c3c);
+        }
+
+        .action-btn.next {
+            background: linear-gradient(145deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .action-btn.next:hover {
+            background: linear-gradient(145deg, #58d68d, #27ae60);
+        }
+
+        .level-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .level-btn {
+            padding: 8px 20px;
+            border: 2px solid #4a7c23;
+            border-radius: 8px;
+            background: white;
+            color: #4a7c23;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .level-btn:hover {
+            background: #4a7c23;
+            color: white;
+        }
+
+        .level-btn.active {
+            background: #4a7c23;
+            color: white;
+        }
+
+        .game-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            text-align: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .game-message.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        .message-title {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        .message-title.win {
+            color: #58d68d;
+        }
+
+        .message-title.lose {
+            color: #ec7063;
+        }
+
+        .message-score {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+
+        .message-btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #4a7c23, #2d5016);
+            color: white;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .message-btn:hover {
+            background: linear-gradient(145deg, #5a9c33, #3d6026);
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .legend-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2em;
+        }
+
+        .status-indicators {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .status-badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+
+        .status-badge.slowed {
+            background: #ffeaa7;
+            color: #b8860b;
+        }
+
+        .status-badge.burrowed {
+            background: #d5aaff;
+            color: #6b3fa0;
+        }
+
+        .status-badge.dashing {
+            background: #a8e6cf;
+            color: #2c7873;
+        }
+
+        .keyboard-hint {
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .cooldown {
+            font-size: 0.75em;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-header">
+            <h1 class="game-title">🐹 地鼠潜行 🥕</h1>
+            <div class="level-display">
+                第 <span id="current-level">1</span> 关
+            </div>
+        </div>
+
+        <div class="level-selector">
+            <button class="level-btn active" data-level="1">第一关</button>
+            <button class="level-btn" data-level="2">第二关</button>
+            <button class="level-btn" data-level="3">第三关</button>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-label">分数</div>
+                <div class="stat-value" id="score">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">胡萝卜</div>
+                <div class="stat-value carrots" id="carrots">0 🥕</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">目标分数</div>
+                <div class="stat-value" id="target-score">50</div>
+            </div>
+        </div>
+
+        <div class="status-indicators" id="status-indicators"></div>
+
+        <div class="game-board">
+            <div class="grid" id="game-grid"></div>
+        </div>
+
+        <div class="controls">
+            <div class="direction-controls">
+                <button class="dir-btn up" data-direction="up">↑</button>
+                <button class="dir-btn left" data-direction="left">←</button>
+                <button class="dir-btn center">●</button>
+                <button class="dir-btn right" data-direction="right">→</button>
+                <button class="dir-btn down" data-direction="down">↓</button>
+            </div>
+
+            <div class="skill-controls" id="skill-controls" style="display: none;">
+                <button class="skill-btn dash" id="dash-btn" title="极速冲刺 - 向指定方向移动3格">
+                    <span>⚡ 极速冲刺</span>
+                    <span class="skill-cost">消耗 3 胡萝卜</span>
+                    <span class="cooldown" id="dash-cooldown"></span>
+                </button>
+                <button class="skill-btn burrow" id="burrow-btn" title="原地遁地 - 无敌3秒">
+                    <span>🕳️ 原地遁地</span>
+                    <span class="skill-cost">消耗 5 胡萝卜</span>
+                    <span class="cooldown" id="burrow-cooldown"></span>
+                </button>
+            </div>
+
+            <div class="action-buttons">
+                <button class="action-btn restart" id="restart-btn">🔄 重新开始</button>
+                <button class="action-btn next" id="next-btn" style="display: none;">➡️ 下一关</button>
+            </div>
+        </div>
+
+        <div class="keyboard-hint">
+            使用方向键 ↑ ↓ ← → 或 WASD 移动 | 按 D 开启冲刺方向选择 | 按 B 使用遁地
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><span class="legend-icon">🐹</span>地鼠</div>
+            <div class="legend-item"><span class="legend-icon">🥕</span>胡萝卜</div>
+            <div class="legend-item"><span class="legend-icon">🪨</span>石头</div>
+            <div class="legend-item"><span class="legend-icon">🪤</span>捕兽夹</div>
+            <div class="legend-item"><span class="legend-icon">⚠️</span>锤击预警</div>
+            <div class="legend-item"><span class="legend-icon">👨‍🌾</span>农夫</div>
+            <div class="legend-item"><span class="legend-icon">🐕</span>农场狗</div>
+        </div>
+    </div>
+
+    <div class="game-message" id="game-message">
+        <div class="message-title" id="message-title"></div>
+        <div class="message-score" id="message-score"></div>
+        <div>
+            <button class="message-btn" id="msg-restart-btn">重新开始</button>
+            <button class="message-btn" id="msg-next-btn" style="display: none;">下一关</button>
+        </div>
+    </div>
+
+    <script>
+        class MoleSneakGame {
+            constructor() {
+                this.gameId = null;
+                this.currentLevel = 1;
+                this.gameState = null;
+                this.isSelectingDashDirection = false;
+                
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.startNewGame(1);
+            }
+
+            bindEvents() {
+                document.querySelectorAll('.level-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const level = parseInt(btn.dataset.level);
+                        this.startNewGame(level);
+                    });
+                });
+
+                document.querySelectorAll('.dir-btn[data-direction]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const direction = btn.dataset.direction;
+                        if (this.isSelectingDashDirection) {
+                            this.useDash(direction);
+                            this.isSelectingDashDirection = false;
+                        } else {
+                            this.move(direction);
+                        }
+                    });
+                });
+
+                document.addEventListener('keydown', (e) => {
+                    const keyMap = {
+                        'ArrowUp': 'up', 'w': 'up', 'W': 'up',
+                        'ArrowDown': 'down', 's': 'down', 'S': 'down',
+                        'ArrowLeft': 'left', 'a': 'left', 'A': 'left',
+                        'ArrowRight': 'right', 'd': 'right', 'D': 'right'
+                    };
+
+                    if (keyMap[e.key]) {
+                        e.preventDefault();
+                        if (this.isSelectingDashDirection) {
+                            this.useDash(keyMap[e.key]);
+                            this.isSelectingDashDirection = false;
+                        } else {
+                            this.move(keyMap[e.key]);
+                        }
+                    }
+
+                    if (e.key === 'b' || e.key === 'B') {
+                        e.preventDefault();
+                        this.useBurrow();
+                    }
+                });
+
+                document.getElementById('dash-btn').addEventListener('click', () => {
+                    if (this.currentLevel >= 3) {
+                        this.isSelectingDashDirection = true;
+                        alert('请选择冲刺方向（使用方向键或点击方向按钮）');
+                    }
+                });
+
+                document.getElementById('burrow-btn').addEventListener('click', () => {
+                    if (this.currentLevel >= 3) {
+                        this.useBurrow();
+                    }
+                });
+
+                document.getElementById('restart-btn').addEventListener('click', () => {
+                    this.restartGame();
+                });
+
+                document.getElementById('next-btn').addEventListener('click', () => {
+                    this.nextLevel();
+                });
+
+                document.getElementById('msg-restart-btn').addEventListener('click', () => {
+                    this.hideMessage();
+                    this.restartGame();
+                });
+
+                document.getElementById('msg-next-btn').addEventListener('click', () => {
+                    this.hideMessage();
+                    this.nextLevel();
+                });
+            }
+
+            async startNewGame(level) {
+                this.currentLevel = level;
+                
+                document.querySelectorAll('.level-btn').forEach(btn => {
+                    btn.classList.toggle('active', parseInt(btn.dataset.level) === level);
+                });
+
+                document.getElementById('current-level').textContent = level;
+                document.getElementById('target-score').textContent = level === 1 ? 50 : level === 2 ? 100 : 200;
+                
+                document.getElementById('skill-controls').style.display = level >= 3 ? 'flex' : 'none';
+                document.getElementById('next-btn').style.display = 'none';
+
+                try {
+                    const response = await fetch(`/api/game/new?level=${level}`, {
+                        method: 'POST'
+                    });
+                    this.gameState = await response.json();
+                    this.gameId = this.gameState.game_id;
+                    this.renderGame();
+                } catch (error) {
+                    console.error('Failed to start game:', error);
+                    alert('游戏启动失败，请刷新重试');
+                }
+            }
+
+            async move(direction) {
+                if (!this.gameId || this.gameState.status !== 'playing') return;
+
+                try {
+                    const response = await fetch('/api/game/move', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            game_id: this.gameId,
+                            direction: direction
+                        })
+                    });
+                    this.gameState = await response.json();
+                    this.renderGame();
+                    this.checkGameEnd();
+                } catch (error) {
+                    console.error('Move failed:', error);
+                }
+            }
+
+            async useDash(direction) {
+                if (!this.gameId || this.gameState.status !== 'playing') return;
+                if (!this.gameState.skills.can_dash) return;
+
+                try {
+                    const response = await fetch('/api/game/dash', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            game_id: this.gameId,
+                            direction: direction
+                        })
+                    });
+                    this.gameState = await response.json();
+                    this.renderGame();
+                    this.checkGameEnd();
+                } catch (error) {
+                    console.error('Dash failed:', error);
+                    alert('无法使用冲刺：请确保有足够的胡萝卜且技能不在冷却中');
+                }
+            }
+
+            async useBurrow() {
+                if (!this.gameId || this.gameState.status !== 'playing') return;
+                if (!this.gameState.skills.can_burrow) return;
+
+                try {
+                    const response = await fetch('/api/game/burrow', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            game_id: this.gameId
+                        })
+                    });
+                    this.gameState = await response.json();
+                    this.renderGame();
+                    this.checkGameEnd();
+                } catch (error) {
+                    console.error('Burrow failed:', error);
+                    alert('无法使用遁地：请确保有足够的胡萝卜且技能不在冷却中');
+                }
+            }
+
+            async restartGame() {
+                if (!this.gameId) return;
+
+                try {
+                    const response = await fetch(`/api/game/restart?game_id=${this.gameId}`, {
+                        method: 'POST'
+                    });
+                    this.gameState = await response.json();
+                    this.gameId = this.gameState.game_id;
+                    this.renderGame();
+                } catch (error) {
+                    console.error('Restart failed:', error);
+                }
+            }
+
+            async nextLevel() {
+                if (!this.gameId) return;
+
+                try {
+                    const response = await fetch(`/api/game/next-level?game_id=${this.gameId}`, {
+                        method: 'POST'
+                    });
+                    this.gameState = await response.json();
+                    this.gameId = this.gameState.game_id;
+                    this.currentLevel = this.gameState.level;
+                    
+                    document.querySelectorAll('.level-btn').forEach(btn => {
+                        btn.classList.toggle('active', parseInt(btn.dataset.level) === this.currentLevel);
+                    });
+                    document.getElementById('current-level').textContent = this.currentLevel;
+                    document.getElementById('target-score').textContent = this.currentLevel === 1 ? 50 : this.currentLevel === 2 ? 100 : 200;
+                    document.getElementById('skill-controls').style.display = this.currentLevel >= 3 ? 'flex' : 'none';
+                    document.getElementById('next-btn').style.display = 'none';
+                    
+                    this.renderGame();
+                } catch (error) {
+                    console.error('Next level failed:', error);
+                }
+            }
+
+            renderGame() {
+                if (!this.gameState) return;
+
+                document.getElementById('score').textContent = this.gameState.score;
+                document.getElementById('carrots').textContent = `${this.gameState.carrot_count} 🥕`;
+
+                const grid = document.getElementById('game-grid');
+                const size = this.gameState.grid_size;
+                grid.style.gridTemplateColumns = `repeat(${size}, 45px)`;
+                grid.innerHTML = '';
+
+                this.gameState.grid.forEach((cell, index) => {
+                    const cellDiv = document.createElement('div');
+                    cellDiv.className = 'cell';
+
+                    if (cell.type === 'rock') cellDiv.classList.add('rock');
+                    if (cell.type === 'trap') cellDiv.classList.add('trap');
+                    if (cell.is_warning) cellDiv.classList.add('warning');
+                    if (cell.is_struck) cellDiv.classList.add('struck');
+                    if (cell.is_farmer) cellDiv.classList.add('farmer');
+                    if (cell.is_dog) cellDiv.classList.add('dog');
+                    if (cell.is_mole && this.gameState.skills.is_burrowed) cellDiv.classList.add('burrowed');
+
+                    let content = '';
+                    if (cell.is_mole) {
+                        content = this.gameState.skills.is_burrowed ? '🕳️' : '🐹';
+                    } else if (cell.is_farmer) {
+                        content = '👨‍🌾';
+                    } else if (cell.is_dog) {
+                        content = '🐕';
+                    } else if (cell.is_warning) {
+                        content = '⚠️';
+                    } else if (cell.is_struck) {
+                        content = '💥';
+                    } else if (cell.type === 'carrot') {
+                        content = '🥕';
+                    } else if (cell.type === 'rock') {
+                        content = '🪨';
+                    } else if (cell.type === 'trap') {
+                        content = '🪤';
+                    }
+
+                    cellDiv.innerHTML = `<span class="cell-content">${content}</span>`;
+                    grid.appendChild(cellDiv);
+                });
+
+                const dashBtn = document.getElementById('dash-btn');
+                const burrowBtn = document.getElementById('burrow-btn');
+                
+                if (this.currentLevel >= 3) {
+                    dashBtn.disabled = !this.gameState.skills.can_dash;
+                    burrowBtn.disabled = !this.gameState.skills.can_burrow;
+                    
+                    document.getElementById('dash-cooldown').textContent = 
+                        this.gameState.skills.dash_cooldown > 0 ? `冷却: ${this.gameState.skills.dash_cooldown}` : '';
+                    document.getElementById('burrow-cooldown').textContent = 
+                        this.gameState.skills.burrow_cooldown > 0 ? `冷却: ${this.gameState.skills.burrow_cooldown}` : '';
+                }
+
+                this.renderStatusIndicators();
+            }
+
+            renderStatusIndicators() {
+                const container = document.getElementById('status-indicators');
+                container.innerHTML = '';
+
+                if (this.gameState.is_slowed) {
+                    const badge = document.createElement('span');
+                    badge.className = 'status-badge slowed';
+                    badge.textContent = '🪤 减速中';
+                    container.appendChild(badge);
+                }
+
+                if (this.gameState.skills.is_burrowed) {
+                    const badge = document.createElement('span');
+                    badge.className = 'status-badge burrowed';
+                    badge.textContent = '🕳️ 遁地无敌';
+                    container.appendChild(badge);
+                }
+
+                if (this.gameState.skills.is_dashing) {
+                    const badge = document.createElement('span');
+                    badge.className = 'status-badge dashing';
+                    badge.textContent = '⚡ 冲刺中';
+                    container.appendChild(badge);
+                }
+            }
+
+            checkGameEnd() {
+                if (!this.gameState) return;
+
+                if (this.gameState.status === 'won') {
+                    this.showMessage('win', `恭喜过关！得分: ${this.gameState.score}`);
+                    document.getElementById('msg-next-btn').style.display = 'inline-block';
+                    document.getElementById('next-btn').style.display = 'inline-block';
+                } else if (this.gameState.status === 'lost') {
+                    this.showMessage('lose', `游戏结束！得分: ${this.gameState.score}`);
+                    document.getElementById('msg-next-btn').style.display = 'none';
+                }
+            }
+
+            showMessage(type, text) {
+                const messageDiv = document.getElementById('game-message');
+                const titleDiv = document.getElementById('message-title');
+                const scoreDiv = document.getElementById('message-score');
+
+                titleDiv.className = `message-title ${type}`;
+                titleDiv.textContent = type === 'win' ? '🎉 胜利！' : '💀 失败！';
+                scoreDiv.textContent = text;
+
+                messageDiv.classList.add('show');
+            }
+
+            hideMessage() {
+                document.getElementById('game-message').classList.remove('show');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new MoleSneakGame();
+        });
+    </script>
+</body>
+</html>
